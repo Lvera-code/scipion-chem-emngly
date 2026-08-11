@@ -43,6 +43,8 @@ NGLYCO_TYPES = {'n_linked_glycosylation', 'glycosylation_n'}
 
 class ProtEMNGlyPrediction(EMProtocol):
     """
+    AI Generated:
+
     Corroborates N-linked glycosylation candidate sites reported by
     scipion-chem-deepmvp with a local EMNGly installation (ESM-1b sequence
     embeddings + MIF structural embeddings -> SVM). Unlike
