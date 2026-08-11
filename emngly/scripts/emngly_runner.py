@@ -2,11 +2,10 @@
 """Runner standalone para EMNGly (motor real de consenso para 'n_linked_glycosylation', Camino PDB).
 
 VENDORIZADO byte-a-byte desde
-``PTM-Prediction/src/engines/_emngly_runner.py`` (confirmado via ``diff``)
--- misma politica que ``scipion-chem-deepptmpred``: los parches reales que
-contiene (weights_only=False acotado, alineamiento structure_emb via
-position_mapping) nunca se reescriben de memoria, se sincronizan desde el
-proyecto standalone.
+``PTM-Prediction/src/engines/_emngly_runner.py`` -- misma politica que
+``scipion-chem-deepptmpred``: los parches que contiene (weights_only=False
+acotado, alineamiento structure_emb via position_mapping) nunca se
+reescriben de memoria, se sincronizan desde el proyecto standalone.
 
 NUNCA se importa desde el paquete ``src`` -- requiere fair-esm/torch/
 scikit-learn, dependencias del venv dedicado ``Settings.EMNGLY_PYTHON_BIN``
@@ -14,12 +13,12 @@ scikit-learn, dependencias del venv dedicado ``Settings.EMNGLY_PYTHON_BIN``
 invoca EXCLUSIVAMENTE via subprocess desde ``src/engines/emngly_engine.py``,
 mismo patron que ``_deepptmpred_runner.py``.
 
-## Por que existe (rol en el pipeline, decision 2026-08-06)
+## Por que existe (rol en el pipeline)
 
-Reemplaza a CoNglyPred (candidato original de Decision 2, confirmado
-DEFINITIVAMENTE sin pesos publicados en ningun sitio -- ver STATUS.md).
-EMNGly (``github.com/StellaHxy/EMNgly``, Hou et al., Bioinformatics
-39(11):btad650, 2023) SI tiene pesos reales y verificados a nivel de bytes
+Reemplaza a CoNglyPred (candidato original de Decision 2, sin pesos
+publicados en ningun sitio verificable -- ver STATUS.md). EMNGly
+(``github.com/StellaHxy/EMNgly``, Hou et al., Bioinformatics 39(11):btad650,
+2023) SI tiene pesos reales y verificados a nivel de bytes
 (ver ``src/config/settings.py``, bloque EMNGLY_*): ESM-1b (secuencia,
 ``site_emb``+``local_emb``, 1280+1280) + MIF de Microsoft (estructura real
 sobre backbone N/CA/C del PDB, ``structure_emb``, 256) -> SVM (2816
@@ -50,9 +49,8 @@ representacion cruda de ESM para el primer chunk (``delta=0`` cuando
 queda con el token BOS en el indice 0 y el residuo 1-based ``k`` en el indice
 ``k`` (NO en ``k-1``). Esto hace que ``get_site_features``
 (``emb = extract([seq])[pos]``, ``pos`` 1-based) sea CORRECTO tal cual esta
-escrito -- no hay off-by-one real pese a la apariencia inicial (investigacion
-2026-08-06 lo habia flagged como riesgo, este runner lo confirma NO-bug
-leyendo el codigo con cuidado). ``get_local_features``
+escrito -- no hay off-by-one real pese a la apariencia inicial (una lectura
+cuidadosa del codigo original confirma que no es un bug). ``get_local_features``
 (``emb = extract([local_seq])[0]``) es un diseno deliberado distinto: toma el
 embedding del token BOS de la ventana local (no un residuo), como resumen
 pooled del contexto -- mismo patron que usar el token [CLS] en BERT como
@@ -79,19 +77,14 @@ columnas ``fasta_position``/``pdb_seqid``) para traducir la posicion 1-based
 de ``sequence`` (ATMSEQ, la que usa el resto del pipeline) al numero de
 residuo REAL del PDB antes de indexar ``structure_emb`` -- generaliza
 correctamente el supuesto implicito del script original en vez de asumirlo
-ciegamente (fix proactivo del riesgo #1 identificado en la investigacion de
-reemplazo de CoNglyPred, 2026-08-06, antes de tener un caso real que lo
-rompiera).
+ciegamente (fix proactivo del riesgo identificado en la investigacion de
+reemplazo de CoNglyPred, antes de tener un caso real que lo rompiera).
 
 ``parse_PDB`` con ``chain=None`` (default, igual que ``model/get_mif_embedding.py::run``)
 lee TODAS las cadenas del archivo sin filtrar -- solo es seguro si
 ``--pdb-path`` es un PDB de UNA SOLA cadena. Este runner exige
 ``record.chain_pdb_path`` (Fase 1.5, nunca ``record.pdb_path`` crudo), mismo
 criterio ya establecido para MeToken/DeepPTMPred.
-
-NO PROBADO TODAVIA contra el entorno real (checkpoint ESM-1b/SVM no
-descargados en esta maquina, ver STATUS.md) -- los tests mockean
-``subprocess.run``.
 """
 
 import argparse
@@ -128,8 +121,8 @@ class _ESMEmbeddingExtractor:
         # mismo directorio (heuristica interna de fair-esm, no excluye
         # esm1b_t33_650M_UR50S), ver README.md - Seccion de instalacion.
         #
-        # Bug real confirmado 2026-08-07 corriendo la carga real (no solo
-        # leyendo codigo): ``esm/pretrained.py::load_model_and_alphabet_local``
+        # Verificado ejecutando la carga real (no solo leyendo codigo):
+        # ``esm/pretrained.py::load_model_and_alphabet_local``
         # llama ``torch.load(path, map_location="cpu")`` SIN
         # ``weights_only=False`` -- desde PyTorch 2.6 el default de
         # ``weights_only`` cambio a True, y el checkpoint de fair-esm
@@ -206,7 +199,7 @@ def _load_or_compute_structure_emb(pdb_path: Path, mif_weights: Path, cache_dir:
     Cacheado por accession + hash del contenido del PDB (no solo el
     accession): un PDB distinto bajo el mismo accession nunca reusa en
     silencio el embedding viejo -- mismo motivo que el cache de
-    ``_deepptmpred_runner.py`` (auditoria 2026-07-28, item 2).
+    ``_deepptmpred_runner.py``.
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
     pdb_bytes = pdb_path.read_bytes()
@@ -269,7 +262,7 @@ def main() -> int:
 
     # model/MIF/__init__.py hace de 'MIF' un paquete top-level valido al
     # anadir 'EMNgly/model' a sys.path (usado por el 'from MIF.sequence_models...'
-    # de abajo). Ademas -- verificado 2026-08-07 corriendo el import real, no
+    # de abajo). Ademas -- verificado ejecutando el import real, no
     # solo leyendo el codigo -- 'MIF/sequence_models/*.py' (pdb_utils.py,
     # pretrained.py, etc.) hacen imports BARE de 'sequence_models.xxx' (no
     # relativos ni 'MIF.sequence_models.xxx'), igual que el script original

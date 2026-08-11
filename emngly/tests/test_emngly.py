@@ -105,9 +105,9 @@ class TestEMNGlyPrediction(BaseTest):
         byType = {roi.getType(): roi.clone() for roi in outROIs}
         # 'acetylation_k' nunca se envia a EMNGly -- siempre None.
         self.assertIsNone(byType['acetylation_k']._scoreEmngly.get())
-        # 'n_linked_glycosylation' SI se intenta -- corrida real (EMNGly
-        # instalado + checkpoints ESM-1b/SVM/MIF, verificado 2026-08-11 via
-        # 'scipion3 test' real): probabilidad real, no None.
+        # 'n_linked_glycosylation' SI se intenta -- con EMNGly instalado
+        # (checkpoints ESM-1b/SVM/MIF presentes), produce una probabilidad
+        # real, no None.
         score = byType['n_linked_glycosylation']._scoreEmngly.get()
         self.assertIsNotNone(score)
         self.assertGreaterEqual(score, 0.0)

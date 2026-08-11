@@ -98,9 +98,8 @@ class ProtEMNGlyPrediction(EMProtocol):
         rois = self._getRois()
         nglycoPositions = sorted({roi.getROIIdx() for roi in rois if roi.getType() in NGLYCO_TYPES})
 
-        # Rutas ABSOLUTAS obligatorias (bug real encontrado 2026-08-11 via
-        # 'scipion3 test' real sobre scipion-chem-deepmvp, mismo patron
-        # aplica aqui): el subproceso corre con cwd=EMNGLY_HOME.
+        # Rutas ABSOLUTAS obligatorias (mismo patron que scipion-chem-deepmvp):
+        # el subproceso corre con cwd=EMNGLY_HOME.
         outCsv = os.path.abspath(self._getExtraPath('emngly_scores.csv'))
         if not nglycoPositions:
             return

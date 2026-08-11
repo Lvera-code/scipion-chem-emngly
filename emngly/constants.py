@@ -42,7 +42,9 @@ UPSTREAM_URL = 'https://github.com/StellaHxy/EMNgly'
 # flag de CLI. No se agrega parametro useGPU al protocolo.
 GPU_REQUIRED = True
 
-# Licencia de EMNGly (upstream): MIT (resuelto 2026-08-11). Los autores de correspondencia (Yaojun Wang, Shiwei Sun) anadieron el LICENSE MIT al repo tras el correo del 2026-08-10 y autorizaron la integracion en Scipion. Paper CC BY 4.0 (PMC10627407).
+# Licencia de EMNGly (upstream): MIT. El archivo LICENSE fue anadido al
+# repositorio original con posterioridad y la integracion en Scipion quedo
+# autorizada explicitamente. Paper CC BY 4.0 (PMC10627407).
 
 # MIF (Microsoft protein-sequence-models, licencia BSD-2 verificada contra
 # el repo original -- la copia vendorizada dentro de EMNgly perdio su propio
