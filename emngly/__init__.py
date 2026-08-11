@@ -1,0 +1,183 @@
+# -*- coding: utf-8 -*-
+# **************************************************************************
+# *
+# * Authors:     Enzo Sierra (enzogael57@gmail.com)
+# *
+# * This program is free software; you can redistribute it and/or modify
+# * it under the terms of the GNU General Public License as published by
+# * the Free Software Foundation; either version 2 of the License, or
+# * (at your option) any later version.
+# *
+# * This program is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# * GNU General Public License for more details.
+# *
+# * You should have received a copy of the GNU General Public License
+# * along with this program; if not, write to the Free Software
+# * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+# * 02111-1307  USA
+# *
+# *  All comments concerning this program package may be sent to the
+# *  e-mail address 'scipion@cnb.csic.es'
+# *
+# **************************************************************************
+"""
+This package contains a protocol for N-linked glycosylation consensus
+corroboration using a local EMNGly installation (ESM-1b + MIF -> SVM).
+"""
+
+import os
+import subprocess
+
+from scipion.install.funcs import InstallHelper
+
+from pwchem import Plugin as pwchemPlugin
+
+from .constants import (
+    EMNGLY_DIC, ESM_CONTACT_REGRESSION_FILENAME, NOINSTALL_WARNING, UPSTREAM_URL,
+)
+
+# 'Hou2023' (Bioinformatics 39(11):btad650, 2023, PMC10627407) intencionalmente
+# NO listado aqui todavia: bibtex.py sigue con la cita TODO (titulo/autores
+# exactos no verificados desde esta maquina) -- listar la key sin el bibtex
+# real romperia la resolucion de citas en vez de solo omitirla. Completar
+# ambos a la vez cuando se verifique el texto exacto.
+_references = []
+
+
+class Plugin(pwchemPlugin):
+    """EMNGly (StellaHxy/EMNgly, MIT -- ver constants.py) se instala
+    clonando el repo upstream (trae los pesos MIF bundled,
+    ``model/MIF/weights/mif.pt``) y construyendo un entorno conda dedicado
+    (Python 3.10, fair-esm/torch/scikit-learn -- versiones fijadas segun el
+    venv real ya verificado en el proyecto hermano PTM-Prediction, torch
+    instalado desde el indice CPU-only + purga de paquetes nvidia/triton
+    sueltos para evitar el mismo SIGSEGV real ya documentado en
+    scipion-chem-stackglyembed en una maquina sin GPU). DOS piezas quedan
+    manuales: el checkpoint ESM-1b (+ companero de regresion de contactos)
+    y el SVM entrenado (``N-GlyDE.pickle``, descarga desde Google Drive)."""
+
+    @classmethod
+    def _defineVariables(cls):
+        cls._defineEmVar(EMNGLY_DIC['home'], cls.getEnvName(EMNGLY_DIC))
+        cls._defineVar(EMNGLY_DIC['activation'], cls.getEnvActivationCommand(EMNGLY_DIC))
+        cls._defineVar(EMNGLY_DIC['esm_checkpoint'], '')
+        cls._defineVar(EMNGLY_DIC['svm_checkpoint'], '')
+
+    @classmethod
+    def defineBinaries(cls, env):
+        cls.addEMNGlyPackage(env)
+
+    @classmethod
+    def addEMNGlyPackage(cls, env, default=True):
+        home = cls.getVar(EMNGLY_DIC['home'])
+
+        installer = InstallHelper(EMNGLY_DIC['name'], packageHome=home,
+                                  packageVersion=EMNGLY_DIC['version'])
+
+        # Clone ANTES del entorno conda (misma regla ya documentada en
+        # netcleave/deepmvp/deepptmpred/stackglyembed).
+        #
+        # torch CPU-only + purga de nvidia-*/triton (real bug ya encontrado
+        # y corregido para exactamente esta clase de problema en
+        # scipion-chem-stackglyembed/stackglyembed/__init__.py: un 'pip
+        # install torch' liso resuelve el build CUDA por defecto en Linux
+        # incluso sin GPU/drivers, causando un SIGSEGV real dentro de
+        # torch._dynamo al importar transformers/fair-esm) -- aplicado aqui
+        # preventivamente, no solo reactivamente, porque el venv real de
+        # PTM-Prediction (.venv-emngly) SI tiene el build CUDA instalado
+        # (confirmado via 'pip list') sin haber sido nunca sometido a un
+        # 'scipion3 installb' real en una maquina sin GPU.
+        #
+        # Versiones fijadas segun el venv real ya verificado (fair-esm,
+        # numpy, pandas, scikit-learn -- ver PTM-Prediction/.venv-emngly,
+        # 'pip list --format=freeze').
+        installer.addCommand(
+            f"git clone --depth 1 {UPSTREAM_URL} {home}",
+            'EMNGLY_CLONED'
+        ).getCondaEnvCommand(
+            EMNGLY_DIC['name'], binaryVersion=EMNGLY_DIC['version'], pythonVersion='3.10'
+        ).addCommand(
+            f"{cls.getEnvActivationCommand(EMNGLY_DIC)} && "
+            "pip install --index-url https://download.pytorch.org/whl/cpu torch && "
+            "pip install 'numpy==1.23.5' 'pandas==2.3.3' 'scikit-learn==1.1.1' 'fair-esm==2.0.0' wget && "
+            "pip uninstall -y cuda-bindings cuda-pathfinder cuda-toolkit nvidia-cublas "
+            "nvidia-cuda-cupti nvidia-cuda-nvrtc nvidia-cuda-runtime nvidia-cudnn-cu13 "
+            "nvidia-cufft nvidia-cufile nvidia-curand nvidia-cusolver nvidia-cusparse "
+            "nvidia-cusparselt-cu13 nvidia-nccl-cu13 nvidia-nvjitlink nvidia-nvshmem-cu13 "
+            "nvidia-nvtx triton || true",
+            'EMNGLY_INSTALLED'
+        ).addPackage(env, dependencies=['conda', 'git'], default=default)
+
+    @classmethod
+    def validateInstallation(cls):
+        """Check that this plugin's requirements are met. Returns a list of
+        actionable error messages, empty if the installation is correct."""
+        errors = []
+
+        mifWeights = os.path.join(cls.getEMNGlyDir(), 'model', 'MIF', 'weights', 'mif.pt')
+        if not os.path.isfile(mifWeights):
+            errors.append(f"Could not find MIF weights under EMNGLY_HOME: '{mifWeights}'.")
+        elif not cls.checkCallEnv(EMNGLY_DIC):
+            errors.append("Activation of the EMNGly conda environment failed.")
+
+        esmCheckpoint = cls.getEsmCheckpointPath()
+        if not esmCheckpoint or not os.path.isfile(esmCheckpoint):
+            errors.append(f"EMNGLY_ESM_CHECKPOINT ('{esmCheckpoint}') not found.")
+        elif not os.path.isfile(os.path.join(os.path.dirname(esmCheckpoint), ESM_CONTACT_REGRESSION_FILENAME)):
+            errors.append(
+                f"'{ESM_CONTACT_REGRESSION_FILENAME}' (required companion file) not found next to "
+                'EMNGLY_ESM_CHECKPOINT.'
+            )
+
+        svmCheckpoint = cls.getSvmCheckpointPath()
+        if not svmCheckpoint or not os.path.isfile(svmCheckpoint):
+            errors.append(f"EMNGLY_SVM_CHECKPOINT ('{svmCheckpoint}') not found.")
+
+        if errors:
+            errors.append(NOINSTALL_WARNING)
+        return errors
+
+    @classmethod
+    def checkCallEnv(cls, packageDic):
+        actCommand = cls.getVar(packageDic['activation'])
+        try:
+            if 'conda' in actCommand and 'shell.bash hook' not in actCommand:
+                actCommand = f'{cls.getCondaActivationCmd()}{actCommand}'
+            subprocess.check_output(f'{actCommand} && python -c "import torch, esm, sklearn"', shell=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    # ---------------------------------- Utils -----------------------------------
+
+    @classmethod
+    def getEMNGlyDir(cls):
+        return cls.getVar(EMNGLY_DIC['home'])
+
+    @classmethod
+    def getEsmCheckpointPath(cls):
+        return cls.getVar(EMNGLY_DIC['esm_checkpoint'])
+
+    @classmethod
+    def getSvmCheckpointPath(cls):
+        return cls.getVar(EMNGLY_DIC['svm_checkpoint'])
+
+    @classmethod
+    def getMifWeightsPath(cls):
+        return os.path.join(cls.getEMNGlyDir(), 'model', 'MIF', 'weights', 'mif.pt')
+
+    @classmethod
+    def getRunnerScriptPath(cls):
+        pluginDir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(pluginDir, 'scripts', 'emngly_runner.py')
+
+    # ---------------------------------- Protocol functions-----------------------
+
+    @classmethod
+    def runEMNGly(cls, protocol, args, cwd=None):
+        activation = cls.getVar(EMNGLY_DIC['activation'])
+        scriptPath = cls.getRunnerScriptPath()
+        fullProgram = f'MPLBACKEND=Agg {activation} && python {scriptPath}'
+        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
