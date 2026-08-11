@@ -37,23 +37,23 @@ EMNGLY_DIC = {
 READ_URL = 'https://github.com/Lvera-code/scipion-chem-emngly'
 UPSTREAM_URL = 'https://github.com/StellaHxy/EMNgly'
 
-# Confirmado leyendo scripts/emngly_runner.py: 'torch.device("cuda" if
-# torch.cuda.is_available() else "cpu")' -- decidido en codigo, sin ningun
-# flag de CLI. No se agrega parametro useGPU al protocolo.
+# Confirmed by reading scripts/emngly_runner.py: 'torch.device("cuda" if
+# torch.cuda.is_available() else "cpu")' -- decided in code, with no CLI
+# flag. No useGPU parameter is added to the protocol.
 GPU_REQUIRED = True
 
-# Licencia de EMNGly (upstream): MIT. El archivo LICENSE fue anadido al
-# repositorio original con posterioridad y la integracion en Scipion quedo
-# autorizada explicitamente. Paper CC BY 4.0 (PMC10627407).
+# EMNGly license (upstream): MIT. The LICENSE file was added to the
+# original repository afterward, and the Scipion integration was
+# explicitly authorized. Paper CC BY 4.0 (PMC10627407).
 
-# MIF (Microsoft protein-sequence-models, licencia BSD-2 verificada contra
-# el repo original -- la copia vendorizada dentro de EMNgly perdio su propio
-# LICENSE, ver docstring del runner) viene BUNDLED con el clon del repo
-# (model/MIF/weights/mif.pt) -- no requiere descarga aparte.
+# MIF (Microsoft protein-sequence-models, BSD-2 license verified against
+# the original repo -- the vendorized copy inside EMNgly lost its own
+# LICENSE, see the runner's docstring) comes BUNDLED with the repo clone
+# (model/MIF/weights/mif.pt) -- no separate download needed.
 #
-# ESM-1b (checkpoint + companero '-contact-regression.pt') y el SVM
-# (N-GlyDE.pickle, ~36MB, descarga manual desde Google Drive segun el README
-# real de EMNgly) SI son manuales -- mismo patron que DEEPMVP_MODEL_DIR/
+# ESM-1b (checkpoint + '-contact-regression.pt' companion) and the SVM
+# (N-GlyDE.pickle, ~36MB, manual download from Google Drive per EMNgly's
+# real README) ARE manual -- same pattern as DEEPMVP_MODEL_DIR/
 # DEEPPTMPRED_ESM_CHECKPOINT.
 ESM_CHECKPOINT_FILENAME = 'esm1b_t33_650M_UR50S.pt'
 ESM_CONTACT_REGRESSION_FILENAME = 'esm1b_t33_650M_UR50S-contact-regression.pt'
@@ -65,10 +65,10 @@ ESM_CONTACT_REGRESSION_URL = (
 SVM_CHECKPOINT_FILENAME = 'N-GlyDE.pickle'
 
 NOINSTALL_WARNING = (
-    "EMNGly no esta instalado correctamente. Revisa que el repo se haya clonado (EMNGLY_HOME, "
-    "trae MIF/mif.pt bundled), que EMNGLY_ESM_CHECKPOINT apunte al checkpoint ESM-1b (+ su "
-    "companero '-contact-regression.pt' en el mismo directorio), y que EMNGLY_SVM_CHECKPOINT "
-    "apunte a 'N-GlyDE.pickle' (descarga manual desde Google Drive, ver README.rst). Motor de "
-    "consenso OPCIONAL: su ausencia degrada el consenso de N-glicosilacion a solo DeepMVP, no "
-    'bloquea el resto del pipeline.'
+    "EMNGly is not installed correctly. Check that the repo has been cloned (EMNGLY_HOME, "
+    "ships MIF/mif.pt bundled), that EMNGLY_ESM_CHECKPOINT points to the ESM-1b checkpoint (+ its "
+    "'-contact-regression.pt' companion in the same directory), and that EMNGLY_SVM_CHECKPOINT "
+    "points to 'N-GlyDE.pickle' (manual download from Google Drive, see README.rst). OPTIONAL "
+    "consensus engine: its absence degrades the N-glycosylation consensus to DeepMVP alone, it "
+    'does not block the rest of the pipeline.'
 )

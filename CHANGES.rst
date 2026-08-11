@@ -4,18 +4,19 @@ CHANGES
 
 0.2.0
 =====
-- Protocolo real (``ProtEMNGlyPrediction``): corrobora candidatos de
-  N-glicosilacion de scipion-chem-deepmvp (``_scoreEmngly``, None en filas
-  no aplicables). Runner (ESM-1b+MIF->SVM) vendorizado byte-a-byte desde el
-  proyecto standalone. Instalacion automatica del repo (MIF bundled)+entorno
-  conda (torch CPU-only + purga nvidia/triton, mismo fix real que
-  scipion-chem-stackglyembed); checkpoint ESM-1b y SVM manuales. Test real
-  sobre 7c4s (mismo fixture que scipion-chem-discotope/-deepptmpred).
+- Real protocol (``ProtEMNGlyPrediction``): corroborates N-glycosylation
+  candidates from scipion-chem-deepmvp (``_scoreEmngly``, None on
+  non-applicable rows). Runner (ESM-1b+MIF->SVM) vendorized byte-for-byte
+  from the standalone project. Automatic installation of the repo (MIF
+  bundled) + conda environment (CPU-only torch + nvidia/triton purge, same
+  real fix as scipion-chem-stackglyembed); ESM-1b checkpoint and SVM
+  manual. Real test on 7c4s (same fixture as
+  scipion-chem-discotope/-deepptmpred).
 
 0.1.0
 =====
-- Scaffolding inicial: estructura de plugin de Scipion generada siguiendo el
-  mismo patron que los plugins de BCell-Epitope-Prediction (un plugin por
-  herramienta). Sin logica de instalacion ni de protocolo todavia -- pendiente
-  de la validacion end-to-end del pipeline en Colab, ver STATUS.md del
-  proyecto ``PTM-Prediction``.
+- Initial scaffolding: Scipion plugin structure generated following the
+  same pattern as the BCell-Epitope-Prediction plugins (one plugin per
+  tool). No installation or protocol logic yet -- pending end-to-end
+  validation of the pipeline in Colab, see the ``PTM-Prediction`` project's
+  STATUS.md.

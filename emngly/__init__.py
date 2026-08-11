@@ -38,25 +38,26 @@ from .constants import (
     EMNGLY_DIC, ESM_CONTACT_REGRESSION_FILENAME, NOINSTALL_WARNING, UPSTREAM_URL,
 )
 
-# 'Hou2023' (Bioinformatics 39(11):btad650, 2023, PMC10627407) intencionalmente
-# NO listado aqui todavia: bibtex.py sigue con la cita TODO (titulo/autores
-# exactos no verificados desde esta maquina) -- listar la key sin el bibtex
-# real romperia la resolucion de citas en vez de solo omitirla. Completar
-# ambos a la vez cuando se verifique el texto exacto.
+# 'Hou2023' (Bioinformatics 39(11):btad650, 2023, PMC10627407) deliberately
+# NOT listed here yet: bibtex.py still has the citation marked TODO (exact
+# title/authors not verified from this machine) -- listing the key without
+# the real bibtex would break citation resolution instead of just omitting
+# it. Complete both at the same time once the exact text is verified.
 _references = []
 
 
 class Plugin(pwchemPlugin):
-    """EMNGly (StellaHxy/EMNgly, MIT -- ver constants.py) se instala
-    clonando el repo upstream (trae los pesos MIF bundled,
-    ``model/MIF/weights/mif.pt``) y construyendo un entorno conda dedicado
-    (Python 3.10, fair-esm/torch/scikit-learn -- versiones fijadas segun el
-    venv real ya verificado en el proyecto hermano PTM-Prediction, torch
-    instalado desde el indice CPU-only + purga de paquetes nvidia/triton
-    sueltos para evitar el mismo SIGSEGV real ya documentado en
-    scipion-chem-stackglyembed en una maquina sin GPU). DOS piezas quedan
-    manuales: el checkpoint ESM-1b (+ companero de regresion de contactos)
-    y el SVM entrenado (``N-GlyDE.pickle``, descarga desde Google Drive)."""
+    """EMNGly (StellaHxy/EMNgly, MIT -- see constants.py) is installed by
+    cloning the upstream repo (it ships the MIF weights bundled,
+    ``model/MIF/weights/mif.pt``) and building a dedicated conda
+    environment (Python 3.10, fair-esm/torch/scikit-learn -- versions
+    pinned to match the real venv already verified in the sibling
+    PTM-Prediction project, torch installed from the CPU-only index +
+    purge of stray nvidia/triton packages to avoid the same real SIGSEGV
+    already documented in scipion-chem-stackglyembed on a machine with no
+    GPU). TWO pieces remain manual: the ESM-1b checkpoint (+ its
+    contact-regression companion) and the trained SVM
+    (``N-GlyDE.pickle``, downloaded from Google Drive)."""
 
     @classmethod
     def _defineVariables(cls):
@@ -76,22 +77,22 @@ class Plugin(pwchemPlugin):
         installer = InstallHelper(EMNGLY_DIC['name'], packageHome=home,
                                   packageVersion=EMNGLY_DIC['version'])
 
-        # Clone ANTES del entorno conda (misma regla ya documentada en
-        # netcleave/deepmvp/deepptmpred/stackglyembed).
+        # Clone BEFORE the conda environment (same rule already documented
+        # in netcleave/deepmvp/deepptmpred/stackglyembed).
         #
-        # torch CPU-only + purga de nvidia-*/triton (real bug ya encontrado
-        # y corregido para exactamente esta clase de problema en
-        # scipion-chem-stackglyembed/stackglyembed/__init__.py: un 'pip
-        # install torch' liso resuelve el build CUDA por defecto en Linux
-        # incluso sin GPU/drivers, causando un SIGSEGV real dentro de
-        # torch._dynamo al importar transformers/fair-esm) -- aplicado aqui
-        # preventivamente, no solo reactivamente, porque el venv real de
-        # PTM-Prediction (.venv-emngly) SI tiene el build CUDA instalado
-        # (confirmado via 'pip list') sin haber sido nunca sometido a un
-        # 'scipion3 installb' real en una maquina sin GPU.
+        # CPU-only torch + purge of nvidia-*/triton (a real bug already
+        # found and fixed for exactly this class of problem in
+        # scipion-chem-stackglyembed/stackglyembed/__init__.py: a plain
+        # 'pip install torch' resolves the CUDA build by default on Linux
+        # even with no GPU/drivers, causing a real SIGSEGV inside
+        # torch._dynamo when importing transformers/fair-esm) -- applied
+        # here preventively, not just reactively, because the real
+        # PTM-Prediction venv (.venv-emngly) DOES have the CUDA build
+        # installed (confirmed via 'pip list') without ever having gone
+        # through a real 'scipion3 installb' on a machine with no GPU.
         #
-        # Versiones fijadas segun el venv real ya verificado (fair-esm,
-        # numpy, pandas, scikit-learn -- ver PTM-Prediction/.venv-emngly,
+        # Versions pinned to match the real venv already verified (fair-esm,
+        # numpy, pandas, scikit-learn -- see PTM-Prediction/.venv-emngly,
         # 'pip list --format=freeze').
         installer.addCommand(
             f"git clone --depth 1 {UPSTREAM_URL} {home}",

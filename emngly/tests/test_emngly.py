@@ -33,8 +33,8 @@ from pyworkflow.tests import BaseTest, setupTestProject
 
 from ..protocols import ProtEMNGlyPrediction
 
-# Mismo fixture real ya usado en scipion-chem-discotope/scipion-chem-deepptmpred
-# (7c4s, gotcha mmCIF label_asym_id 'C' == author chain 'A', 283 residuos).
+# Same real fixture already used in scipion-chem-discotope/scipion-chem-deepptmpred
+# (7c4s, mmCIF label_asym_id 'C' == author chain 'A' gotcha, 283 residues).
 _TEST_PDB_ID = '7c4s'
 _TEST_CHAIN = 'C'
 
@@ -56,8 +56,9 @@ class TestEMNGlyPrediction(BaseTest):
         )
         cls.proj.launchProtocol(cls.protPrepareReceptor, wait=True)
 
-        # ROIs 'DeepMVP-shaped' sinteticas -- una N-glicosilacion (a corroborar)
-        # y una acetilacion (debe pasar sin tocar, '_scoreEmngly=None').
+        # Synthetic 'DeepMVP-shaped' ROIs -- one N-glycosylation (to be
+        # corroborated) and one acetylation (must pass through untouched,
+        # '_scoreEmngly=None').
         protImportSeq = cls.newProtocol(
             ProtImportSequence, inputSequenceName='EMNGLY_TEST_SEQ',
             inputSequenceDescription='placeholder, not used by ProtEMNGlyPrediction',
@@ -98,16 +99,16 @@ class TestEMNGlyPrediction(BaseTest):
         self.assertIsNotNone(outROIs)
         self.assertEqual(len(outROIs), 2)
 
-        # .clone() obligatorio (mismo gotcha real ya encontrado en
-        # scipion-chem-ptmannotation via 'scipion3 test' real: iterar un
-        # SetOfXXX sin clonar reusa el mismo objeto Python -- cursor sqlite
-        # subyacente -- para todas las filas).
+        # .clone() is mandatory (same real gotcha already found in
+        # scipion-chem-ptmannotation via a real 'scipion3 test' run:
+        # iterating a SetOfXXX without cloning reuses the same Python
+        # object -- underlying sqlite cursor -- for every row).
         byType = {roi.getType(): roi.clone() for roi in outROIs}
-        # 'acetylation_k' nunca se envia a EMNGly -- siempre None.
+        # 'acetylation_k' is never sent to EMNGly -- always None.
         self.assertIsNone(byType['acetylation_k']._scoreEmngly.get())
-        # 'n_linked_glycosylation' SI se intenta -- con EMNGly instalado
-        # (checkpoints ESM-1b/SVM/MIF presentes), produce una probabilidad
-        # real, no None.
+        # 'n_linked_glycosylation' IS attempted -- with EMNGly installed
+        # (ESM-1b/SVM/MIF checkpoints present), it produces a real
+        # probability, not None.
         score = byType['n_linked_glycosylation']._scoreEmngly.get()
         self.assertIsNotNone(score)
         self.assertGreaterEqual(score, 0.0)

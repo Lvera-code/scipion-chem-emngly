@@ -43,8 +43,6 @@ NGLYCO_TYPES = {'n_linked_glycosylation', 'glycosylation_n'}
 
 class ProtEMNGlyPrediction(EMProtocol):
     """
-    AI Generated:
-
     Corroborates N-linked glycosylation candidate sites reported by
     scipion-chem-deepmvp with a local EMNGly installation (ESM-1b sequence
     embeddings + MIF structural embeddings -> SVM). Unlike
@@ -98,8 +96,8 @@ class ProtEMNGlyPrediction(EMProtocol):
         rois = self._getRois()
         nglycoPositions = sorted({roi.getROIIdx() for roi in rois if roi.getType() in NGLYCO_TYPES})
 
-        # Rutas ABSOLUTAS obligatorias (mismo patron que scipion-chem-deepmvp):
-        # el subproceso corre con cwd=EMNGLY_HOME.
+        # ABSOLUTE paths are mandatory (same pattern as scipion-chem-deepmvp):
+        # the subprocess runs with cwd=EMNGLY_HOME.
         outCsv = os.path.abspath(self._getExtraPath('emngly_scores.csv'))
         if not nglycoPositions:
             return
@@ -124,7 +122,7 @@ class ProtEMNGlyPrediction(EMProtocol):
         )
         try:
             emnglyPlugin.runEMNGly(self, args, cwd=emnglyPlugin.getEMNGlyDir())
-        except Exception as exc:  # noqa: BLE001 -- motor de consenso OPCIONAL, degrada sin tumbar el protocolo
+        except Exception as exc:  # noqa: BLE001 -- OPTIONAL consensus engine, degrades without failing the protocol
             self.warning(f'EMNGly failed (non-fatal, degrades to no corroboration): {exc}')
 
     def createOutputStep(self):
@@ -153,8 +151,8 @@ class ProtEMNGlyPrediction(EMProtocol):
     # ---------------------------------- Validation -------------------------------
 
     def _validate(self):
-        # EMNGly es OPCIONAL (degrada, ver docstring) -- nunca bloquea el
-        # lanzamiento por su ausencia, a diferencia de DeepMVP/DeepPTMPred.
+        # EMNGly is OPTIONAL (degrades, see docstring) -- its absence never
+        # blocks launching, unlike DeepMVP/DeepPTMPred.
         return []
 
     def _summary(self):

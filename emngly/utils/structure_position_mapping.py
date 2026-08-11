@@ -23,18 +23,18 @@
 # *
 # **************************************************************************
 """
-Extraccion de secuencia ATMSEQ + tabla de mapeo de posiciones
-(fasta_position <-> pdb_seqid) desde un ``AtomStruct`` de pwchem, ya asumido
-de UNA sola cadena. Vendorizado (misma politica que
-scipion-chem-deepptmpred/deepptmpred/utils/structure_sequence.py) a partir
-de ``PTM-Prediction/src/utils/structure_parser.py::parse_structure``, ya
-validado end-to-end en el pipeline standalone.
+Extraction of the ATMSEQ sequence + position mapping table
+(fasta_position <-> pdb_seqid) from a pwchem ``AtomStruct``, already
+assumed to be a SINGLE chain. Vendorized (same policy as
+scipion-chem-deepptmpred/deepptmpred/utils/structure_sequence.py) from
+``PTM-Prediction/src/utils/structure_parser.py::parse_structure``, already
+validated end-to-end in the standalone pipeline.
 
-La tabla de mapeo es indispensable para EMNGly: el runner vendorizado
-(``scripts/emngly_runner.py``) necesita traducir la posicion 1-based de
-``sequence`` (ATMSEQ) al numero de residuo REAL del PDB
-(``pdb_seqid``, puede tener huecos/no arrancar en 1) antes de indexar
-``structure_emb`` -- ver docstring de ese runner.
+The mapping table is essential for EMNGly: the vendorized runner
+(``scripts/emngly_runner.py``) needs to translate the 1-based position of
+``sequence`` (ATMSEQ) to the REAL PDB residue number (``pdb_seqid``, which
+can have gaps/not start at 1) before indexing ``structure_emb`` -- see that
+runner's docstring.
 """
 
 import csv
@@ -55,22 +55,23 @@ def _resolveResidueLetter(resname):
 
 
 def extractSequenceAndMapping(pdbPath):
-    """Devuelve ``(sequence, positionMappingRows)`` de la primera cadena polimero de ``pdbPath``.
+    """Returns ``(sequence, positionMappingRows)`` for the first polymer chain in ``pdbPath``.
 
-    ``positionMappingRows`` es una lista de dicts con
-    ``POSITION_MAPPING_COLUMNS`` (una fila por residuo, mismo orden que
-    ``sequence``) -- exactamente lo que
-    ``emngly_runner.py::_fasta_position_to_pdb_seqid`` espera leer de un CSV.
+    ``positionMappingRows`` is a list of dicts with
+    ``POSITION_MAPPING_COLUMNS`` (one row per residue, same order as
+    ``sequence``) -- exactly what
+    ``emngly_runner.py::_fasta_position_to_pdb_seqid`` expects to read from
+    a CSV.
 
     Raises:
-        StructurePositionMappingError: si el modelo 1 no tiene ninguna
-            cadena con un polimero de aminoacidos valido.
+        StructurePositionMappingError: if model 1 has no chain with a
+            valid amino acid polymer.
     """
     structure = gemmi.read_structure(str(pdbPath))
     structure.setup_entities()
 
     if len(structure) == 0:
-        raise StructurePositionMappingError(f"'{pdbPath}' no contiene ningun modelo (MODEL) parseable.")
+        raise StructurePositionMappingError(f"'{pdbPath}' does not contain any parseable model (MODEL).")
 
     model = structure[0]
     chain = None
@@ -80,8 +81,8 @@ def extractSequenceAndMapping(pdbPath):
             break
     if chain is None:
         raise StructurePositionMappingError(
-            f"El modelo 1 de '{pdbPath}' no tiene ninguna cadena con al menos un residuo de "
-            "aminoacido valido en su polimero."
+            f"Model 1 of '{pdbPath}' has no chain with at least one valid amino acid "
+            "residue in its polymer."
         )
 
     residues = list(chain.get_polymer())
