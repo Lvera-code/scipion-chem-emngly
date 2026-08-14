@@ -7,8 +7,8 @@ second consensus engine for structural N-glycosylation
 (n_linked_glycosylation, PDB path), alongside DeepMVP.
 
 ``ProtEMNGlyPrediction`` corroborates N-glycosylation candidates from
-``scipion-chem-deepmvp`` with a vendorized runner (identical to the one
-already validated end-to-end in the standalone pipeline).
+``scipion-chem-deepmvp`` with a vendorized runner, a maintained
+byte-for-byte copy of the upstream inference script.
 
 Original repo: https://github.com/StellaHxy/EMNgly
 

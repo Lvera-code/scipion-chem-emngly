@@ -1,25 +1,22 @@
 #!/usr/bin/env python
 """Standalone runner for EMNGly (real consensus engine for 'n_linked_glycosylation', PDB path).
 
-VENDORIZED byte-for-byte from
-``PTM-Prediction/src/engines/_emngly_runner.py`` -- same policy as
+A maintained, byte-for-byte vendored copy -- same policy as
 ``scipion-chem-deepptmpred``: the patches it contains (scoped
 weights_only=False, structure_emb alignment via position_mapping) are
-never rewritten from memory, they are synced from the standalone project.
+never rewritten from memory.
 
-NEVER imported from the ``src`` package -- it requires fair-esm/torch/
-scikit-learn, dependencies of the dedicated venv ``Settings.EMNGLY_PYTHON_BIN``
-(never shared with DEEPMVP_PYTHON_BIN/DEEPPTMPRED_PYTHON_BIN/others). It is
-invoked EXCLUSIVELY via subprocess from ``src/engines/emngly_engine.py``,
-same pattern as ``_deepptmpred_runner.py``.
+Requires fair-esm/torch/scikit-learn, dependencies ONLY present in this
+plugin's dedicated conda environment (never shared with other plugins'
+environments). It is invoked EXCLUSIVELY via subprocess from this
+plugin's protocol, same pattern as ``scipion-chem-deepptmpred``'s runner.
 
 ## Why it exists (role in the pipeline)
 
-Replaces CoNglyPred (Decision 2's original candidate, with no weights
-published anywhere verifiable -- see STATUS.md). EMNGly
+Replaces CoNglyPred, an earlier N-glycosylation-consensus candidate with
+no weights published anywhere verifiable. EMNGly
 (``github.com/StellaHxy/EMNgly``, Hou et al., Bioinformatics 39(11):btad650,
-2023) DOES have real weights, verified at the byte level
-(see ``src/config/settings.py``, EMNGLY_* block): ESM-1b (sequence,
+2023) DOES have real weights, verified at the byte level: ESM-1b (sequence,
 ``site_emb``+``local_emb``, 1280+1280) + Microsoft's MIF (real structure
 over the PDB's N/CA/C backbone, ``structure_emb``, 256) -> SVM (2816
 features). Preserves the design property "the second engine of this type

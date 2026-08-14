@@ -50,14 +50,12 @@ class Plugin(pwchemPlugin):
     """EMNGly (StellaHxy/EMNgly, MIT -- see constants.py) is installed by
     cloning the upstream repo (it ships the MIF weights bundled,
     ``model/MIF/weights/mif.pt``) and building a dedicated conda
-    environment (Python 3.10, fair-esm/torch/scikit-learn -- versions
-    pinned to match the real venv already verified in the sibling
-    PTM-Prediction project, torch installed from the CPU-only index +
-    purge of stray nvidia/triton packages to avoid the same real SIGSEGV
-    already documented in scipion-chem-stackglyembed on a machine with no
-    GPU). TWO pieces remain manual: the ESM-1b checkpoint (+ its
-    contact-regression companion) and the trained SVM
-    (``N-GlyDE.pickle``, downloaded from Google Drive)."""
+    environment (Python 3.10, fair-esm/torch/scikit-learn), torch
+    installed from the CPU-only index + purge of stray nvidia/triton
+    packages to avoid the same real SIGSEGV already documented in
+    scipion-chem-stackglyembed on a machine with no GPU. TWO pieces remain
+    manual: the ESM-1b checkpoint (+ its contact-regression companion) and
+    the trained SVM (``N-GlyDE.pickle``, downloaded from Google Drive)."""
 
     @classmethod
     def _defineVariables(cls):
@@ -86,14 +84,12 @@ class Plugin(pwchemPlugin):
         # 'pip install torch' resolves the CUDA build by default on Linux
         # even with no GPU/drivers, causing a real SIGSEGV inside
         # torch._dynamo when importing transformers/fair-esm) -- applied
-        # here preventively, not just reactively, because the real
-        # PTM-Prediction venv (.venv-emngly) DOES have the CUDA build
-        # installed (confirmed via 'pip list') without ever having gone
-        # through a real 'scipion3 installb' on a machine with no GPU.
+        # here preventively, not just reactively: a default pip install of
+        # fair-esm/torch pulls in the CUDA build even on a machine with no
+        # GPU/drivers.
         #
-        # Versions pinned to match the real venv already verified (fair-esm,
-        # numpy, pandas, scikit-learn -- see PTM-Prediction/.venv-emngly,
-        # 'pip list --format=freeze').
+        # Versions pinned to a known-good combination (fair-esm, numpy,
+        # pandas, scikit-learn).
         installer.addCommand(
             f"git clone --depth 1 {UPSTREAM_URL} {home}",
             'EMNGLY_CLONED'

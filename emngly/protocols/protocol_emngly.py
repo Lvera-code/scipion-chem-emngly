@@ -51,10 +51,10 @@ class ProtEMNGlyPrediction(EMProtocol):
     scipion-chem-metoken/Kinase Library (purely informative), EMNGly is a
     REAL consensus engine for this ONE PTM type -- it replaces DeepPTMPred
     here (DeepPTMPred has no real discriminative power for
-    n_linked_glycosylation, AUROC~=0.5, see project STATUS.md) -- but this
-    protocol itself follows the SAME "annotate, never decide" mechanics as
-    every other corroboration step (see SCIPION_INTEGRATION_SPEC.md §G.1):
-    it only ADDS a score, downstream ``ProtPTMAnnotation`` (run on this
+    n_linked_glycosylation, AUROC~=0.5 in its own per-type calibration) --
+    but this protocol itself follows the SAME "annotate, never decide"
+    mechanics as every other corroboration step: it only ADDS a score,
+    downstream ``ProtPTMAnnotation`` (run on this
     protocol's output instead of DeepMVP's raw output) is what actually
     decides the N-glycosylation consensus.
 

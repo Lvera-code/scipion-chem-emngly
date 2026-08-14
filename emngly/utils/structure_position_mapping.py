@@ -25,10 +25,10 @@
 """
 Extraction of the ATMSEQ sequence + position mapping table
 (fasta_position <-> pdb_seqid) from a pwchem ``AtomStruct``, already
-assumed to be a SINGLE chain. Vendorized (same policy as
-scipion-chem-deepptmpred/deepptmpred/utils/structure_sequence.py) from
-``PTM-Prediction/src/utils/structure_parser.py::parse_structure``, already
-validated end-to-end in the standalone pipeline.
+assumed to be a SINGLE chain. Each plugin in this project keeps its own
+minimal copy of this logic (same policy as
+scipion-chem-deepptmpred/deepptmpred/utils/structure_sequence.py) rather
+than a shared dependency.
 
 The mapping table is essential for EMNGly: the vendorized runner
 (``scripts/emngly_runner.py``) needs to translate the 1-based position of
