@@ -87,13 +87,17 @@ class TestEMNGlyPrediction(BaseTest):
         rebuilt.write()
         cls.protDeepmvpROIs = protDefSeqROIs
 
-    def test(self):
+    def _runEMNGlyPrediction(self):
         protEMNGly = self.newProtocol(ProtEMNGlyPrediction)
         protEMNGly.inputROIs.set(self.protDeepmvpROIs)
         protEMNGly.inputROIs.setExtended('outputROIs')
         protEMNGly.inputStructure.set(self.protPrepareReceptor)
         protEMNGly.inputStructure.setExtended('outputStructure')
         self.launchProtocol(protEMNGly, wait=True)
+        return protEMNGly
+
+    def test(self):
+        protEMNGly = self._runEMNGlyPrediction()
 
         outROIs = getattr(protEMNGly, 'outputROIs', None)
         self.assertIsNotNone(outROIs)
