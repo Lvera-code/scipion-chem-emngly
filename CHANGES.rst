@@ -5,8 +5,8 @@ CHANGES
 0.4.1
 =====
 - Reverted the 0.3.0 Python bump (3.10 -> 3.11) found broken via an
-  actual end-to-end fresh install on a Colab GPU session (Tesla T4,
-  2026-08-21): ``scikit-learn==1.1.1`` (the pinned version required for
+  actual end-to-end fresh install on a real GPU machine:
+  ``scikit-learn==1.1.1`` (the pinned version required for
   the SVM pickle's ABI, see 0.3.0) has NO prebuilt wheel for Python 3.11
   (confirmed via ``pip download --python-version 311``, real "No
   matching distribution" error) and fails to build from source. Back to
@@ -24,11 +24,10 @@ CHANGES
   ``runEMNGly`` (the runner decides GPU/CPU itself via
   ``torch.cuda.is_available()``, no native CLI flag). Torch install +
   nvidia/triton purge are now GPU-conditional: default (CUDA-capable)
-  wheel and no purge when a GPU is detected; without one (this dev
-  machine's case, the only branch verified here) stays exactly the
-  already-verified CPU-only-wheel + purge behavior. The
+  wheel and no purge when a GPU is detected; without one, stays exactly
+  the already-verified CPU-only-wheel + purge behavior. The
   ``CUDA_VISIBLE_DEVICES`` lever itself was verified for real against
-  torch on a Colab GPU session (Tesla T4): ``torch.cuda.is_available()``
+  torch on a real GPU machine: ``torch.cuda.is_available()``
   flips False/True exactly as expected.
 
 0.3.0

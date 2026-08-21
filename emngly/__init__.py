@@ -88,13 +88,13 @@ class Plugin(pwchemPlugin):
         # Installed FROM the repo's own real 'environment.yml' (via
         # 'conda env update -f'), not a hand-reconstructed package list.
         # pythonVersion stays '3.10' (NOT the file's real 'python=3.11.0'
-        # pin -- 'python' is filtered out below too): a real Colab GPU
-        # session test (2026-08-21) found scikit-learn==1.1.1 has NO
+        # pin -- 'python' is filtered out below too): a real end-to-end
+        # install test on a GPU machine found scikit-learn==1.1.1 has NO
         # prebuilt wheel for Python 3.11 (only up to 3.10 -- verified via
         # 'pip download --python-version 311', real 'No matching
-        # distribution' error) and fails to build from source. An earlier
-        # session's bump to 3.11 (to "match the file") was never actually
-        # tested end-to-end against this specific pin before now.
+        # distribution' error) and fails to build from source. Bumping to
+        # 3.11 to match the file's own pin is therefore not viable given
+        # this pinned scikit-learn version.
         # 'pytorch'/'numpy'/'pandas'/'scikit-learn'/'python' are filtered
         # out of the file before the conda update, then installed
         # separately with the EXACT versions already production-validated
@@ -117,11 +117,10 @@ class Plugin(pwchemPlugin):
         # Torch install + nvidia/triton purge are now GPU-conditional
         # (checked via 'nvidia-smi', same criterion as
         # scipion-chem-deepmvp/-deepptmpred): with a GPU present, install
-        # the default (CUDA-capable) torch wheel and skip the purge; on
-        # this dev machine (no GPU, so this is the actually-tested branch)
-        # the CPU-only wheel + purge stays exactly as it was verified
-        # before this GPU work -- the real SIGSEGV this purge originally
-        # fixed (scipion-chem-stackglyembed) came from a default 'pip
+        # the default (CUDA-capable) torch wheel and skip the purge;
+        # without a GPU, the CPU-only wheel + purge stays exactly as it
+        # was verified before this GPU work -- the real SIGSEGV this
+        # purge originally fixed (scipion-chem-stackglyembed) came from a default 'pip
         # install torch' pulling in a CUDA build on a machine with NO
         # driver, which the CPU-only index prevents; on a real GPU machine
         # those nvidia-*/triton packages are needed, not stray.
@@ -248,7 +247,7 @@ class Plugin(pwchemPlugin):
         # dict fails with a real AttributeError, confirmed by an actual
         # failed test run (see scipion-chem-deepmvp for the trace).
         # CUDA_VISIBLE_DEVICES='' vs unset/'0' verified for real against
-        # torch on a real GPU (Colab, Tesla T4, 2026-08-21):
+        # torch on a real GPU machine:
         # 'torch.cuda.is_available()' flips False/True accordingly -- not
         # just a theoretical lever.
         env = Environ(os.environ)

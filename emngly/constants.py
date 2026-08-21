@@ -54,9 +54,8 @@ GPU_REQUIRED = True
 # ESM-1b (checkpoint + '-contact-regression.pt' companion, ~7.8GB) and the
 # SVM (N-GlyDE.pickle, ~36MB) are now auto-downloaded at install time into
 # '<EMNGLY_HOME>/checkpoints/' (see addEMNGlyPackage in __init__.py). The
-# SVM's real direct URL is a Google Drive file-id link, already verified
-# via a real HTTP Range request in an earlier session (2026-08-06, see
-# project memory) -- re-confirmed 2026-08-21 ('curl -sIL': real 200,
+# SVM's real direct URL is a Google Drive file-id link, confirmed via a
+# real HTTP Range request against the live file ('curl -sIL': real 200,
 # 'content-disposition: attachment; filename="N-GlyDE.pickle"').
 ESM_CHECKPOINT_FILENAME = 'esm1b_t33_650M_UR50S.pt'
 ESM_CONTACT_REGRESSION_FILENAME = 'esm1b_t33_650M_UR50S-contact-regression.pt'
