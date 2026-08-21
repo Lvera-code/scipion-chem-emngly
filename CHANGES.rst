@@ -2,6 +2,17 @@
 CHANGES
 =========
 
+0.3.0
+=====
+- Installed from the repo's own real ``environment.yml`` (Python bumped to
+  the file's real 3.11.0; GPU/pickle-incompatible conda entries filtered
+  out, kept overriding numpy/pandas/scikit-learn to the already
+  production-validated versions). ESM-1b checkpoint and the SVM
+  (``N-GlyDE.pickle``) now auto-downloaded at install time into
+  ``<EMNGLY_HOME>/checkpoints/``. Removed unused ``READ_URL`` constant.
+  Test file split into per-behavior methods instead of one ``setUpClass``
+  blob.
+
 0.2.0
 =====
 - Real protocol (``ProtEMNGlyPrediction``): corroborates N-glycosylation

@@ -32,14 +32,13 @@ Install this plugin
             scipion3 installp -p . --devel
             scipion3 installb EMNGly
 
-The repo (with the MIF weights bundled) and the conda environment are
-installed automatically. TWO pieces remain **manual**:
-
-- ESM-1b checkpoint (``esm1b_t33_650M_UR50S.pt``) + its required companion
-  (``esm1b_t33_650M_UR50S-contact-regression.pt``) in the SAME directory --
-  point ``EMNGLY_ESM_CHECKPOINT`` (in ``scipion.conf``) at the former.
-- Trained SVM (``N-GlyDE.pickle``, downloaded from Google Drive, see
-  EMNgly's real README) -- point ``EMNGLY_SVM_CHECKPOINT`` at it.
+The repo (with the MIF weights bundled), the conda environment (installed
+from the repo's own ``environment.yml``), the ESM-1b checkpoint
+(``esm1b_t33_650M_UR50S.pt`` + its ``-contact-regression.pt`` companion) and
+the trained SVM (``N-GlyDE.pickle``) are all installed automatically, into
+``<EMNGLY_HOME>/checkpoints/``. Only set ``EMNGLY_ESM_CHECKPOINT``/
+``EMNGLY_SVM_CHECKPOINT`` in ``scipion.conf`` if you want to point at
+different files instead.
 
 .. code-block::
 

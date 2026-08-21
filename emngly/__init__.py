@@ -35,7 +35,9 @@ from scipion.install.funcs import InstallHelper
 from pwchem import Plugin as pwchemPlugin
 
 from .constants import (
-    EMNGLY_DIC, ESM_CONTACT_REGRESSION_FILENAME, NOINSTALL_WARNING, UPSTREAM_URL,
+    EMNGLY_DIC, ESM_CHECKPOINT_FILENAME, ESM_CONTACT_REGRESSION_FILENAME,
+    ESM_CONTACT_REGRESSION_URL, ESM_DOWNLOAD_URL, NOINSTALL_WARNING, SVM_CHECKPOINT_FILENAME,
+    SVM_DOWNLOAD_URL, UPSTREAM_URL,
 )
 
 # 'Hou2023' (Bioinformatics 39(11):btad650, 2023, PMC10627407) deliberately
@@ -50,17 +52,21 @@ class Plugin(pwchemPlugin):
     """EMNGly (StellaHxy/EMNgly, MIT -- see constants.py) is installed by
     cloning the upstream repo (it ships the MIF weights bundled,
     ``model/MIF/weights/mif.pt``) and building a dedicated conda
-    environment (Python 3.10, fair-esm/torch/scikit-learn), torch
+    environment (Python 3.11, fair-esm/torch/scikit-learn), torch
     installed from the CPU-only index + purge of stray nvidia/triton
     packages to avoid the same real SIGSEGV already documented in
-    scipion-chem-stackglyembed on a machine with no GPU. TWO pieces remain
-    manual: the ESM-1b checkpoint (+ its contact-regression companion) and
-    the trained SVM (``N-GlyDE.pickle``, downloaded from Google Drive)."""
+    scipion-chem-stackglyembed on a machine with no GPU. The ESM-1b
+    checkpoint (+ its contact-regression companion) and the trained SVM
+    (``N-GlyDE.pickle``) are auto-downloaded at install time into
+    ``<EMNGLY_HOME>/checkpoints/``."""
 
     @classmethod
     def _defineVariables(cls):
         cls._defineEmVar(EMNGLY_DIC['home'], cls.getEnvName(EMNGLY_DIC))
         cls._defineVar(EMNGLY_DIC['activation'], cls.getEnvActivationCommand(EMNGLY_DIC))
+        # Empty by default: 'getEsmCheckpointPath()'/'getSvmCheckpointPath()'
+        # below fall back to where addEMNGlyPackage auto-downloads them
+        # ('<EMNGLY_HOME>/checkpoints/') when unset.
         cls._defineVar(EMNGLY_DIC['esm_checkpoint'], '')
         cls._defineVar(EMNGLY_DIC['svm_checkpoint'], '')
 
@@ -78,23 +84,46 @@ class Plugin(pwchemPlugin):
         # Clone BEFORE the conda environment (same rule already documented
         # in netcleave/deepmvp/deepptmpred/stackglyembed).
         #
-        # CPU-only torch + purge of nvidia-*/triton (a real bug already
-        # found and fixed for exactly this class of problem in
-        # scipion-chem-stackglyembed/stackglyembed/__init__.py: a plain
-        # 'pip install torch' resolves the CUDA build by default on Linux
-        # even with no GPU/drivers, causing a real SIGSEGV inside
-        # torch._dynamo when importing transformers/fair-esm) -- applied
-        # here preventively, not just reactively: a default pip install of
-        # fair-esm/torch pulls in the CUDA build even on a machine with no
-        # GPU/drivers.
+        # Installed FROM the repo's own real 'environment.yml' (via
+        # 'conda env update -f'), not a hand-reconstructed package list --
+        # pythonVersion bumped to '3.11' to match its real 'python=3.11.0'
+        # pin (previously '3.10', never actually read from the file).
+        # 'pytorch'/'numpy'/'pandas'/'scikit-learn' are filtered out of the
+        # file before that update, then installed separately with the
+        # EXACT versions already production-validated for this plugin
+        # (MCC=0.82 real go/no-go run, matches the published benchmark) --
+        # NOT the file's own newer pins, which would regress a validated
+        # result:
+        #   * scikit-learn==1.1.1 (not the file's 1.5.1): the downloaded
+        #     SVM pickle's own '_sklearn_version' is 1.1.1 -- confirmed by
+        #     inspecting the pickle directly, not assumed.
+        #   * numpy==1.23.5/pandas==2.3.3 (not the file's 1.26.4/2.2.3):
+        #     the already-tested combination compatible with that
+        #     scikit-learn==1.1.1 build.
+        #   * torch (CPU-only wheel, not the file's conda-channel
+        #     'pytorch=2.3.1' -- avoids pulling a CUDA build via conda
+        #     with no matching NVIDIA drivers, same reasoning as
+        #     scipion-chem-deepptmpred).
+        # 'fair-esm'/'wget' are NOT in the file at all (verified) --
+        # genuinely additional packages, not an override.
         #
-        # Versions pinned to a known-good combination (fair-esm, numpy,
-        # pandas, scikit-learn).
+        # Purge of nvidia-*/triton kept as a defensive no-op-if-absent
+        # safety net (the real SIGSEGV this originally fixed, in
+        # scipion-chem-stackglyembed, came from a default 'pip install
+        # torch' pulling in a CUDA build -- the explicit CPU-only index
+        # above should already prevent that here, but this costs nothing
+        # to keep).
         installer.addCommand(
             f"git clone --depth 1 {UPSTREAM_URL} {home}",
             'EMNGLY_CLONED'
         ).getCondaEnvCommand(
-            EMNGLY_DIC['name'], binaryVersion=EMNGLY_DIC['version'], pythonVersion='3.10'
+            EMNGLY_DIC['name'], binaryVersion=EMNGLY_DIC['version'], pythonVersion='3.11'
+        ).addCommand(
+            f"grep -vE '^[[:space:]]*-[[:space:]]*(pytorch|numpy|numpy-base|pandas|scikit-learn)"
+            f"([[:space:]]*=|$)' {home}/environment.yml > {home}/environment_filtered.yml && "
+            f"{cls.getCondaActivationCmd()}conda env update -n {cls.getEnvName(EMNGLY_DIC)} "
+            f"-f {home}/environment_filtered.yml",
+            'EMNGLY_BASE_ENV_UPDATED'
         ).addCommand(
             f"{cls.getEnvActivationCommand(EMNGLY_DIC)} && "
             "pip install --index-url https://download.pytorch.org/whl/cpu torch && "
@@ -105,7 +134,16 @@ class Plugin(pwchemPlugin):
             "nvidia-cusparselt-cu13 nvidia-nccl-cu13 nvidia-nvjitlink nvidia-nvshmem-cu13 "
             "nvidia-nvtx triton || true",
             'EMNGLY_INSTALLED'
-        ).addPackage(env, dependencies=['conda', 'git'], default=default)
+        ).addCommand(
+            # ESM-1b + SVM checkpoint auto-download (see constants.py for
+            # the SVM Google Drive URL's real verification history).
+            f"mkdir -p {home}/checkpoints && "
+            f"curl -fsSL --retry 3 -o {home}/checkpoints/{ESM_CHECKPOINT_FILENAME} {ESM_DOWNLOAD_URL} && "
+            f"curl -fsSL --retry 3 -o {home}/checkpoints/{ESM_CONTACT_REGRESSION_FILENAME} "
+            f"{ESM_CONTACT_REGRESSION_URL} && "
+            f"curl -fsSL --retry 3 -o {home}/checkpoints/{SVM_CHECKPOINT_FILENAME} \"{SVM_DOWNLOAD_URL}\"",
+            'EMNGLY_CHECKPOINTS_DOWNLOADED'
+        ).addPackage(env, dependencies=['conda', 'git', 'curl'], default=default)
 
     @classmethod
     def validateInstallation(cls):
@@ -155,11 +193,17 @@ class Plugin(pwchemPlugin):
 
     @classmethod
     def getEsmCheckpointPath(cls):
-        return cls.getVar(EMNGLY_DIC['esm_checkpoint'])
+        configured = cls.getVar(EMNGLY_DIC['esm_checkpoint'])
+        if configured:
+            return configured
+        return os.path.join(cls.getEMNGlyDir(), 'checkpoints', ESM_CHECKPOINT_FILENAME)
 
     @classmethod
     def getSvmCheckpointPath(cls):
-        return cls.getVar(EMNGLY_DIC['svm_checkpoint'])
+        configured = cls.getVar(EMNGLY_DIC['svm_checkpoint'])
+        if configured:
+            return configured
+        return os.path.join(cls.getEMNGlyDir(), 'checkpoints', SVM_CHECKPOINT_FILENAME)
 
     @classmethod
     def getMifWeightsPath(cls):

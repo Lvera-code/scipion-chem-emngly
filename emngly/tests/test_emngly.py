@@ -46,19 +46,46 @@ class TestEMNGlyPrediction(BaseTest):
         super().setUpClass()
         setupTestProject(cls)
 
+        cls.protImportPdb = cls._runImportPdb()
+        cls.protPrepareReceptor = cls._runPrepareReceptorChainC(cls.protImportPdb)
+        cls.protDeepmvpROIs = cls._buildSyntheticDeepmvpRois()
+        # Run once here (real conda subprocess: ESM-1b + MIF + SVM), not per
+        # test method -- the two test_ methods below only assert on its
+        # already-computed output.
+        cls.protEMNGly = cls._runEMNGlyPrediction(cls.protDeepmvpROIs, cls.protPrepareReceptor)
+
+    @classmethod
+    def _runImportPdb(cls):
         protImportPdb = cls.newProtocol(ProtImportPdb, inputPdbData=0, pdbId=_TEST_PDB_ID)
         cls.proj.launchProtocol(protImportPdb, wait=True)
+        return protImportPdb
 
-        cls.protPrepareReceptor = cls.newProtocol(
+    @classmethod
+    def _runPrepareReceptorChainC(cls, protImportPdb):
+        protPrepareReceptor = cls.newProtocol(
             ProtChemPrepareReceptor, inputAtomStruct=protImportPdb.outputPdb,
             usePDBFixer=True, addRes=False, HETATM=False, rchains=True,
             chain_name='{"model": 0, "chain": "%s"}' % _TEST_CHAIN,
         )
-        cls.proj.launchProtocol(cls.protPrepareReceptor, wait=True)
+        cls.proj.launchProtocol(protPrepareReceptor, wait=True)
+        return protPrepareReceptor
 
-        # Synthetic 'DeepMVP-shaped' ROIs -- one N-glycosylation (to be
-        # corroborated) and one acetylation (must pass through untouched,
-        # '_scoreEmngly=None').
+    @classmethod
+    def _buildSyntheticDeepmvpRois(cls):
+        """Builds two synthetic 'DeepMVP-shaped' ROIs: one N-glycosylation
+        (must be corroborated by EMNGly) and one acetylation (must pass
+        through untouched, '_scoreEmngly=None').
+
+        ``ProtDefineSeqROI`` has no way to set DeepMVP-specific attributes
+        (``_type``, ``_scoreDeepmvp``, ``_fpr``, ``_passesThreshold``,
+        ``_residueWt``) on its own output -- a real ``SetOfSequenceROIs``
+        cannot be mutated in place once written (its rows are backed by an
+        append-only sqlite file), so the only way to inject them is to
+        materialize the items, delete that sqlite file, and rebuild a new
+        set from scratch with the extra attributes added per item. This is
+        the same rebuild trick this project already uses elsewhere for the
+        same reason (see scipion-chem-ptmannotation).
+        """
         protImportSeq = cls.newProtocol(
             ProtImportSequence, inputSequenceName='EMNGLY_TEST_SEQ',
             inputSequenceDescription='placeholder, not used by ProtEMNGlyPrediction',
@@ -85,34 +112,39 @@ class TestEMNGlyPrediction(BaseTest):
             roi._residueWt = String('N' if i == 0 else 'K')
             rebuilt.append(roi)
         rebuilt.write()
-        cls.protDeepmvpROIs = protDefSeqROIs
+        return protDefSeqROIs
 
-    def _runEMNGlyPrediction(self):
-        protEMNGly = self.newProtocol(ProtEMNGlyPrediction)
-        protEMNGly.inputROIs.set(self.protDeepmvpROIs)
+    @classmethod
+    def _runEMNGlyPrediction(cls, protDeepmvpROIs, protPrepareReceptor):
+        protEMNGly = cls.newProtocol(ProtEMNGlyPrediction)
+        protEMNGly.inputROIs.set(protDeepmvpROIs)
         protEMNGly.inputROIs.setExtended('outputROIs')
-        protEMNGly.inputStructure.set(self.protPrepareReceptor)
+        protEMNGly.inputStructure.set(protPrepareReceptor)
         protEMNGly.inputStructure.setExtended('outputStructure')
-        self.launchProtocol(protEMNGly, wait=True)
+        cls.proj.launchProtocol(protEMNGly, wait=True)
         return protEMNGly
 
-    def test(self):
-        protEMNGly = self._runEMNGlyPrediction()
-
-        outROIs = getattr(protEMNGly, 'outputROIs', None)
+    def _getRoisByType(self):
+        outROIs = getattr(self.protEMNGly, 'outputROIs', None)
         self.assertIsNotNone(outROIs)
         self.assertEqual(len(outROIs), 2)
-
         # .clone() is mandatory (same real gotcha already found in
         # scipion-chem-ptmannotation via a real 'scipion3 test' run:
         # iterating a SetOfXXX without cloning reuses the same Python
         # object -- underlying sqlite cursor -- for every row).
-        byType = {roi.getType(): roi.clone() for roi in outROIs}
-        # 'acetylation_k' is never sent to EMNGly -- always None.
+        return {roi.getType(): roi.clone() for roi in outROIs}
+
+    def test_untouchedForOtherType(self):
+        """A PTM type EMNGly never scores ('acetylation_k') must pass
+        through the protocol with '_scoreEmngly' left unset (None)."""
+        byType = self._getRoisByType()
         self.assertIsNone(byType['acetylation_k']._scoreEmngly.get())
-        # 'n_linked_glycosylation' IS attempted -- with EMNGly installed
-        # (ESM-1b/SVM/MIF checkpoints present), it produces a real
-        # probability, not None.
+
+    def test_scoreAssignedForGlycosylation(self):
+        """'n_linked_glycosylation' IS sent to EMNGly -- with EMNGly
+        installed (ESM-1b/SVM/MIF checkpoints present), it must produce a
+        real probability, not None."""
+        byType = self._getRoisByType()
         score = byType['n_linked_glycosylation']._scoreEmngly.get()
         self.assertIsNotNone(score)
         self.assertGreaterEqual(score, 0.0)

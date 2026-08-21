@@ -34,7 +34,6 @@ EMNGLY_DIC = {
     'svm_checkpoint': 'EMNGLY_SVM_CHECKPOINT',
 }
 
-READ_URL = 'https://github.com/Lvera-code/scipion-chem-emngly'
 UPSTREAM_URL = 'https://github.com/StellaHxy/EMNgly'
 
 # Confirmed by reading scripts/emngly_runner.py: 'torch.device("cuda" if
@@ -51,10 +50,13 @@ GPU_REQUIRED = True
 # LICENSE, see the runner's docstring) comes BUNDLED with the repo clone
 # (model/MIF/weights/mif.pt) -- no separate download needed.
 #
-# ESM-1b (checkpoint + '-contact-regression.pt' companion) and the SVM
-# (N-GlyDE.pickle, ~36MB, manual download from Google Drive per EMNgly's
-# real README) ARE manual -- same pattern as DEEPMVP_MODEL_DIR/
-# DEEPPTMPRED_ESM_CHECKPOINT.
+# ESM-1b (checkpoint + '-contact-regression.pt' companion, ~7.8GB) and the
+# SVM (N-GlyDE.pickle, ~36MB) are now auto-downloaded at install time into
+# '<EMNGLY_HOME>/checkpoints/' (see addEMNGlyPackage in __init__.py). The
+# SVM's real direct URL is a Google Drive file-id link, already verified
+# via a real HTTP Range request in an earlier session (2026-08-06, see
+# project memory) -- re-confirmed 2026-08-21 ('curl -sIL': real 200,
+# 'content-disposition: attachment; filename="N-GlyDE.pickle"').
 ESM_CHECKPOINT_FILENAME = 'esm1b_t33_650M_UR50S.pt'
 ESM_CONTACT_REGRESSION_FILENAME = 'esm1b_t33_650M_UR50S-contact-regression.pt'
 ESM_DOWNLOAD_URL = 'https://dl.fbaipublicfiles.com/fair-esm/models/esm1b_t33_650M_UR50S.pt'
@@ -63,12 +65,16 @@ ESM_CONTACT_REGRESSION_URL = (
     'esm1b_t33_650M_UR50S-contact-regression.pt'
 )
 SVM_CHECKPOINT_FILENAME = 'N-GlyDE.pickle'
+SVM_DOWNLOAD_URL = (
+    'https://drive.usercontent.google.com/download?'
+    'id=1hbnEtHHXTGnQAFm-cCHMj3pWQiAYAUsw&export=download&confirm=t'
+)
 
 NOINSTALL_WARNING = (
     "EMNGly is not installed correctly. Check that the repo has been cloned (EMNGLY_HOME, "
-    "ships MIF/mif.pt bundled), that EMNGLY_ESM_CHECKPOINT points to the ESM-1b checkpoint (+ its "
-    "'-contact-regression.pt' companion in the same directory), and that EMNGLY_SVM_CHECKPOINT "
-    "points to 'N-GlyDE.pickle' (manual download from Google Drive, see README.rst). OPTIONAL "
-    "consensus engine: its absence degrades the N-glycosylation consensus to DeepMVP alone, it "
-    'does not block the rest of the pipeline.'
+    "ships MIF/mif.pt bundled) and that the ESM-1b checkpoint + 'N-GlyDE.pickle' were "
+    "auto-downloaded into '<EMNGLY_HOME>/checkpoints/' -- re-run 'scipion3 installb emngly' or, "
+    "if that keeps failing, download them manually and point EMNGLY_ESM_CHECKPOINT/"
+    "EMNGLY_SVM_CHECKPOINT at them. OPTIONAL consensus engine: its absence degrades the "
+    "N-glycosylation consensus to DeepMVP alone, it does not block the rest of the pipeline."
 )
