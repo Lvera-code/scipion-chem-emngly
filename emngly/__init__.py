@@ -53,7 +53,7 @@ class Plugin(pwchemPlugin):
     """EMNGly (StellaHxy/EMNgly, MIT -- see constants.py) is installed by
     cloning the upstream repo (it ships the MIF weights bundled,
     ``model/MIF/weights/mif.pt``) and building a dedicated conda
-    environment (Python 3.11, fair-esm/torch/scikit-learn), torch
+    environment (Python 3.10, fair-esm/torch/scikit-learn), torch
     installed from the CPU-only index + purge of stray nvidia/triton
     packages to avoid the same real SIGSEGV already documented in
     scipion-chem-stackglyembed on a machine with no GPU. The ESM-1b
@@ -86,15 +86,21 @@ class Plugin(pwchemPlugin):
         # in netcleave/deepmvp/deepptmpred/stackglyembed).
         #
         # Installed FROM the repo's own real 'environment.yml' (via
-        # 'conda env update -f'), not a hand-reconstructed package list --
-        # pythonVersion bumped to '3.11' to match its real 'python=3.11.0'
-        # pin (previously '3.10', never actually read from the file).
-        # 'pytorch'/'numpy'/'pandas'/'scikit-learn' are filtered out of the
-        # file before that update, then installed separately with the
-        # EXACT versions already production-validated for this plugin
-        # (MCC=0.82 real go/no-go run, matches the published benchmark) --
-        # NOT the file's own newer pins, which would regress a validated
-        # result:
+        # 'conda env update -f'), not a hand-reconstructed package list.
+        # pythonVersion stays '3.10' (NOT the file's real 'python=3.11.0'
+        # pin -- 'python' is filtered out below too): a real Colab GPU
+        # session test (2026-08-21) found scikit-learn==1.1.1 has NO
+        # prebuilt wheel for Python 3.11 (only up to 3.10 -- verified via
+        # 'pip download --python-version 311', real 'No matching
+        # distribution' error) and fails to build from source. An earlier
+        # session's bump to 3.11 (to "match the file") was never actually
+        # tested end-to-end against this specific pin before now.
+        # 'pytorch'/'numpy'/'pandas'/'scikit-learn'/'python' are filtered
+        # out of the file before the conda update, then installed
+        # separately with the EXACT versions already production-validated
+        # for this plugin (MCC=0.82 real go/no-go run, matches the
+        # published benchmark) -- NOT the file's own newer pins, which
+        # would regress a validated result:
         #   * scikit-learn==1.1.1 (not the file's 1.5.1): the downloaded
         #     SVM pickle's own '_sklearn_version' is 1.1.1 -- confirmed by
         #     inspecting the pickle directly, not assumed.
@@ -123,9 +129,9 @@ class Plugin(pwchemPlugin):
             f"git clone --depth 1 {UPSTREAM_URL} {home}",
             'EMNGLY_CLONED'
         ).getCondaEnvCommand(
-            EMNGLY_DIC['name'], binaryVersion=EMNGLY_DIC['version'], pythonVersion='3.11'
+            EMNGLY_DIC['name'], binaryVersion=EMNGLY_DIC['version'], pythonVersion='3.10'
         ).addCommand(
-            f"grep -vE '^[[:space:]]*-[[:space:]]*(pytorch|numpy|numpy-base|pandas|scikit-learn)"
+            f"grep -vE '^[[:space:]]*-[[:space:]]*(pytorch|numpy|numpy-base|pandas|scikit-learn|python)"
             f"([[:space:]]*=|$)' {home}/environment.yml > {home}/environment_filtered.yml && "
             f"{cls.getCondaActivationCmd()}conda env update -n {cls.getEnvName(EMNGLY_DIC)} "
             f"-f {home}/environment_filtered.yml",

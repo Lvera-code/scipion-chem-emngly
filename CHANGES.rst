@@ -2,6 +2,21 @@
 CHANGES
 =========
 
+0.4.1
+=====
+- Reverted the 0.3.0 Python bump (3.10 -> 3.11) found broken via an
+  actual end-to-end fresh install on a Colab GPU session (Tesla T4,
+  2026-08-21): ``scikit-learn==1.1.1`` (the pinned version required for
+  the SVM pickle's ABI, see 0.3.0) has NO prebuilt wheel for Python 3.11
+  (confirmed via ``pip download --python-version 311``, real "No
+  matching distribution" error) and fails to build from source. Back to
+  Python 3.10 (the file's own ``python=3.11.0`` pin is now also filtered
+  out, not just installed-over). Verified after the fix: full env
+  creation + real GPU torch install + all 3 pinned packages install
+  cleanly, ``torch.cuda.is_available()`` True, SVM pickle unpickles
+  correctly (``sklearn.svm._classes.SVC``, ``n_features_in_=2816``,
+  matching ESM-1b+MIF+structural dims exactly).
+
 0.4.0
 =====
 - GPU support: ``USE_GPU``/``GPU_LIST`` hidden params added to
