@@ -241,6 +241,10 @@ class Plugin(pwchemPlugin):
         # like 'getPrepend()' pyworkflow's job runner calls) -- a plain
         # dict fails with a real AttributeError, confirmed by an actual
         # failed test run (see scipion-chem-deepmvp for the trace).
+        # CUDA_VISIBLE_DEVICES='' vs unset/'0' verified for real against
+        # torch on a real GPU (Colab, Tesla T4, 2026-08-21):
+        # 'torch.cuda.is_available()' flips False/True accordingly -- not
+        # just a theoretical lever.
         env = Environ(os.environ)
         env['CUDA_VISIBLE_DEVICES'] = protocol.gpuList.get() if protocol.useGpu.get() else ''
         protocol.runJob(fullProgram, args, env=env, cwd=cwd)
