@@ -2,6 +2,17 @@
 CHANGES
 =========
 
+0.4.0
+=====
+- GPU support: ``USE_GPU``/``GPU_LIST`` hidden params added to
+  ``ProtEMNGlyPrediction``, wired to ``CUDA_VISIBLE_DEVICES`` in
+  ``runEMNGly`` (the runner decides GPU/CPU itself via
+  ``torch.cuda.is_available()``, no native CLI flag). Torch install +
+  nvidia/triton purge are now GPU-conditional: default (CUDA-capable)
+  wheel and no purge when a GPU is detected; without one (this dev
+  machine's case, the only branch verified here) stays exactly the
+  already-verified CPU-only-wheel + purge behavior.
+
 0.3.0
 =====
 - Installed from the repo's own real ``environment.yml`` (Python bumped to

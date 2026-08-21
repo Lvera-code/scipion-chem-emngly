@@ -38,7 +38,8 @@ UPSTREAM_URL = 'https://github.com/StellaHxy/EMNgly'
 
 # Confirmed by reading scripts/emngly_runner.py: 'torch.device("cuda" if
 # torch.cuda.is_available() else "cpu")' -- decided in code, with no CLI
-# flag. No useGPU parameter is added to the protocol.
+# flag. The protocol's USE_GPU/GPU_LIST hidden params act on that decision
+# indirectly, via CUDA_VISIBLE_DEVICES (see runEMNGly in __init__.py).
 GPU_REQUIRED = True
 
 # EMNGly license (upstream): MIT. The LICENSE file was added to the

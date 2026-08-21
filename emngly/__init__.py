@@ -30,6 +30,7 @@ corroboration using a local EMNGly installation (ESM-1b + MIF -> SVM).
 import os
 import subprocess
 
+from pyworkflow.utils import Environ
 from scipion.install.funcs import InstallHelper
 
 from pwchem import Plugin as pwchemPlugin
@@ -107,12 +108,17 @@ class Plugin(pwchemPlugin):
         # 'fair-esm'/'wget' are NOT in the file at all (verified) --
         # genuinely additional packages, not an override.
         #
-        # Purge of nvidia-*/triton kept as a defensive no-op-if-absent
-        # safety net (the real SIGSEGV this originally fixed, in
-        # scipion-chem-stackglyembed, came from a default 'pip install
-        # torch' pulling in a CUDA build -- the explicit CPU-only index
-        # above should already prevent that here, but this costs nothing
-        # to keep).
+        # Torch install + nvidia/triton purge are now GPU-conditional
+        # (checked via 'nvidia-smi', same criterion as
+        # scipion-chem-deepmvp/-deepptmpred): with a GPU present, install
+        # the default (CUDA-capable) torch wheel and skip the purge; on
+        # this dev machine (no GPU, so this is the actually-tested branch)
+        # the CPU-only wheel + purge stays exactly as it was verified
+        # before this GPU work -- the real SIGSEGV this purge originally
+        # fixed (scipion-chem-stackglyembed) came from a default 'pip
+        # install torch' pulling in a CUDA build on a machine with NO
+        # driver, which the CPU-only index prevents; on a real GPU machine
+        # those nvidia-*/triton packages are needed, not stray.
         installer.addCommand(
             f"git clone --depth 1 {UPSTREAM_URL} {home}",
             'EMNGLY_CLONED'
@@ -126,13 +132,17 @@ class Plugin(pwchemPlugin):
             'EMNGLY_BASE_ENV_UPDATED'
         ).addCommand(
             f"{cls.getEnvActivationCommand(EMNGLY_DIC)} && "
-            "pip install --index-url https://download.pytorch.org/whl/cpu torch && "
             "pip install 'numpy==1.23.5' 'pandas==2.3.3' 'scikit-learn==1.1.1' 'fair-esm==2.0.0' wget && "
+            "if command -v nvidia-smi > /dev/null 2>&1; then "
+            "pip install torch; "
+            "else "
+            "pip install --index-url https://download.pytorch.org/whl/cpu torch && "
             "pip uninstall -y cuda-bindings cuda-pathfinder cuda-toolkit nvidia-cublas "
             "nvidia-cuda-cupti nvidia-cuda-nvrtc nvidia-cuda-runtime nvidia-cudnn-cu13 "
             "nvidia-cufft nvidia-cufile nvidia-curand nvidia-cusolver nvidia-cusparse "
             "nvidia-cusparselt-cu13 nvidia-nccl-cu13 nvidia-nvjitlink nvidia-nvshmem-cu13 "
-            "nvidia-nvtx triton || true",
+            "nvidia-nvtx triton || true; "
+            "fi",
             'EMNGLY_INSTALLED'
         ).addCommand(
             # ESM-1b + SVM checkpoint auto-download (see constants.py for
@@ -221,4 +231,16 @@ class Plugin(pwchemPlugin):
         activation = cls.getVar(EMNGLY_DIC['activation'])
         scriptPath = cls.getRunnerScriptPath()
         fullProgram = f'MPLBACKEND=Agg {activation} && python {scriptPath}'
-        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
+        # CUDA_VISIBLE_DEVICES: the runner decides GPU/CPU itself
+        # ('torch.cuda.is_available()', no CLI flag) -- this is the real
+        # lever useGpu/gpuList (protocol_emngly.py) have on that check.
+        # 'cls.getEnviron()' is never overridden anywhere in this project
+        # (always returns None, equivalent to inheriting os.environ) --
+        # building a real copy here is additive. Must be a real
+        # 'pyworkflow.utils.Environ' (a dict subclass with extra methods
+        # like 'getPrepend()' pyworkflow's job runner calls) -- a plain
+        # dict fails with a real AttributeError, confirmed by an actual
+        # failed test run (see scipion-chem-deepmvp for the trace).
+        env = Environ(os.environ)
+        env['CUDA_VISIBLE_DEVICES'] = protocol.gpuList.get() if protocol.useGpu.get() else ''
+        protocol.runJob(fullProgram, args, env=env, cwd=cwd)

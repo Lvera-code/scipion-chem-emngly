@@ -73,6 +73,16 @@ class ProtEMNGlyPrediction(EMProtocol):
     _label = 'emngly n-glycosylation corroboration'
 
     def _defineParams(self, form):
+        # The vendorized runner already decides GPU/CPU in code
+        # ('torch.device("cuda" if torch.cuda.is_available() else "cpu")',
+        # see constants.py) -- these hidden params control
+        # CUDA_VISIBLE_DEVICES before that check runs (see runEMNGly).
+        form.addHidden(params.USE_GPU, params.BooleanParam, default=True,
+                       label='Use GPU: ',
+                       help='Whether to use GPU or not. (Unable to choose the GPU id).')
+        form.addHidden(params.GPU_LIST, params.StringParam, default='0', label='Choose GPU IDs',
+                       help='Add a list of GPU devices that can be used')
+
         form.addSection(label='Input')
         form.addParam('inputROIs', params.PointerParam, pointerClass='SetOfSequenceROIs',
                        label='DeepMVP candidates: ',
